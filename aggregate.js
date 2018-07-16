@@ -76,13 +76,11 @@ const aggregate = filePath => new Promise((resolve1, reject1) => {
         POPULATION_2012: contiGdp.get(continent),
       };
     });
-
     const outputpath = './output/output.json';
     fs.writeFile(outputpath, JSON.stringify(output), (err) => {
       if (err) reject1(err);
       else resolve1();
     });
-    console.log(output);
   });
 });
 
