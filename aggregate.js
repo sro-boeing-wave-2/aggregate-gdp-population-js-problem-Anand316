@@ -5,60 +5,85 @@
 
 const fs = require('fs');
 
-const aggregate = (filePath) => {
-  const data = fs.readFileSync(filePath, 'utf8');
-  const dataRow = data.split('\n');
+const aggregate = filePath => new Promise((resolve1, reject1) => {
+  const countryContinentArray = (file) => {
+    const a = new Promise((resolve, reject) => {
+      fs.readFile(file, 'utf8', (err, items) => {
+        if (err) {
+          reject(err);
+        } else {
+          const splitRow = items.split('\n');
+          let splitIndi;
+          const AllCCMap = new Map();
+          for (let i = 0; i < splitRow.length - 1; i += 1) {
+            splitIndi = splitRow[i].split(',');
+            AllCCMap.set(splitIndi[0], splitIndi[1]);
+          }
+          resolve(AllCCMap);
+        }
+      });
+    });
+    return a;
+  };
 
-  const allCountConti = new Map();
-  const cc = fs.readFileSync('./data/cc-mapping.txt', 'utf8');
-  const ccRow = cc.split('\n');
-  for (let i = 1; i < ccRow.length; i += 1) {
-    const ccIndi = ccRow[i].split(',');
-    allCountConti.set(ccIndi[0], ccIndi[1]);
-  }
+  const countryGdpPop = (file) => {
+    const a = new Promise((resolve, reject) => {
+      fs.readFile(file, 'utf8', (err, items) => {
+        if (err) {
+          reject(err);
+        } else {
+          const splitRow = items.split('\n');
+          let splitInd;
+          const countGdp = new Map();
+          const countPop = new Map();
+          for (let i = 1; i < splitRow.length - 2; i += 1) {
+            splitInd = splitRow[i].split(',');
 
-  const countPop = new Map();
-  const countGdp = new Map();
-  const countConti = new Map();
-  for (let i = 1; i < dataRow.length - 2; i += 1) {
-    const dataIndi = dataRow[i].split(',');
-    countPop.set(dataIndi[0].slice(1, -1), dataIndi[4].slice(1, -1));
-    countGdp.set(dataIndi[0].slice(1, -1), dataIndi[7].slice(1, -1));
-    countConti.set(dataIndi[0].slice(1, -1), allCountConti.get(dataIndi[0].slice(1, -1)));
-  }
+            countGdp.set(splitInd[0].slice(1, -1), splitInd[4].slice(1, -1));
+            countPop.set(splitInd[0].slice(1, -1), splitInd[7].slice(1, -1));
+          }
+          const Arr = [countGdp, countPop];
+          resolve(Arr);
+        }
+      });
+    });
+    return a;
+  };
 
-  const contiPop = new Map();
-  const contiGdp = new Map();
+  Promise.all([countryContinentArray('./data/cc-mapping.txt'), countryGdpPop(filePath)]).then((values) => {
+    const contiPop = new Map();
+    const contiGdp = new Map();
+    values[1][1].forEach((popVal, country) => {
+      if (contiPop.has(values[0].get(country))) {
+        contiPop.set(values[0].get(country), parseFloat(contiPop.get(values[0].get(country)))
+          + parseFloat(popVal));
+      } else {
+        contiPop.set(values[0].get(country), parseFloat(popVal));
+      }
+    });
+    values[1][0].forEach((popVal, country) => {
+      if (contiGdp.has(values[0].get(country))) {
+        contiGdp.set(values[0].get(country), parseFloat(contiGdp.get(values[0].get(country)))
+          + parseFloat(popVal));
+      } else {
+        contiGdp.set(values[0].get(country), parseFloat(popVal));
+      }
+    });
+    const output = {};
+    contiPop.forEach((val, continent) => {
+      output[continent] = {
+        GDP_2012: val,
+        POPULATION_2012: contiGdp.get(continent),
+      };
+    });
 
-  countConti.forEach((continent, popVal) => {
-    if (contiPop.has(continent)) {
-      contiPop.set(continent, parseFloat(contiPop.get(continent))
-        + parseFloat(countPop.get(popVal)));
-    } else {
-      contiPop.set(continent, parseFloat(countPop.get(popVal)));
-    }
+    const outputpath = './output/output.json';
+    fs.writeFile(outputpath, JSON.stringify(output), (err) => {
+      if (err) reject1(err);
+      else resolve1();
+    });
+    console.log(output);
   });
-  countConti.forEach((continent, gdpVal) => {
-    if (contiGdp.has(continent)) {
-      contiGdp.set(continent, parseFloat(contiGdp.get(continent))
-        + parseFloat(countGdp.get(gdpVal)));
-    } else {
-      contiGdp.set(continent, parseFloat(countGdp.get(gdpVal)));
-    }
-  });
-
-  const output = {};
-
-  const out = './output/output.json';
-
-  contiGdp.forEach((val, continent) => {
-    output[continent] = {
-      GDP_2012: val,
-      POPULATION_2012: contiPop.get(continent),
-    };
-  });
-
-  fs.writeFileSync(out, JSON.stringify(output));
-};
+});
 
 module.exports = aggregate;
