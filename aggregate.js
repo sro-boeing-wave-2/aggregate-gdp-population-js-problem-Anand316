@@ -44,8 +44,8 @@ const aggregate = filePath => new Promise((resolve, reject) => {
     });
     writeFilePromise(outputFilePath, JSON.stringify(aggregateData)).then(() => {
       resolve();
-    }).catch((error) => {
-      reject(error);
+    }).catch((err) => {
+      reject(err);
     });
   }).catch((error) => {
     reject(error);
